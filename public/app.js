@@ -50,9 +50,14 @@
           folderId: state.folderId,
         }),
       });
-      return res.ok;
-    } catch (_) {
-      return false;
+      if (res.ok) return { ok: true };
+      const data = await res.json().catch(() => ({}));
+      const message = data.error || `HTTP ${res.status}`;
+      console.error("[settings save]", res.status, data);
+      return { ok: false, error: message };
+    } catch (e) {
+      console.error("[settings save]", e);
+      return { ok: false, error: e.message };
     }
   }
 
@@ -138,11 +143,11 @@
   });
 
   async function saveAndSync(successMsg) {
-    const ok = await pushRemoteSettings();
-    if (ok) {
+    const result = await pushRemoteSettings();
+    if (result.ok) {
       showToast(`${successMsg} (모든 디바이스에 동기화) ☁️`);
     } else {
-      showToast(`${successMsg} (이 디바이스에만 저장됨 ⚠️)`);
+      showToast(`${successMsg} ⚠️ 동기화 실패: ${result.error}`);
     }
   }
 

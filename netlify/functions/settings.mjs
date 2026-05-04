@@ -1,34 +1,33 @@
-const { getStore } = require("@netlify/blobs");
+import { getStore } from "@netlify/blobs";
+
+export const config = {
+  path: "/api/settings",
+};
 
 const STORE_NAME = "chatbot-settings";
 const KEY = "default";
 
-function jsonResponse(statusCode, body) {
-  return {
-    statusCode,
+function jsonResponse(status, body) {
+  return new Response(JSON.stringify(body), {
+    status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
     },
-    body: JSON.stringify(body),
-  };
+  });
 }
 
-function getSettingsStore() {
-  return getStore({ name: STORE_NAME, consistency: "strong" });
-}
-
-exports.handler = async (event) => {
+export default async (req) => {
   let store;
   try {
-    store = getSettingsStore();
+    store = getStore({ name: STORE_NAME, consistency: "strong" });
   } catch (e) {
     return jsonResponse(500, {
-      error: `설정 저장소 초기화 실패: ${e.message}. Netlify Blobs가 활성화되어 있는지 확인하세요.`,
+      error: `Netlify Blobs 초기화 실패: ${e.message}`,
     });
   }
 
-  if (event.httpMethod === "GET") {
+  if (req.method === "GET") {
     try {
       const data = await store.get(KEY, { type: "json" });
       return jsonResponse(200, data || { instructions: "", folderId: "" });
@@ -37,10 +36,10 @@ exports.handler = async (event) => {
     }
   }
 
-  if (event.httpMethod === "PUT" || event.httpMethod === "POST") {
+  if (req.method === "PUT" || req.method === "POST") {
     let payload;
     try {
-      payload = JSON.parse(event.body || "{}");
+      payload = await req.json();
     } catch (e) {
       return jsonResponse(400, { error: "요청 본문이 올바른 JSON이 아닙니다." });
     }
