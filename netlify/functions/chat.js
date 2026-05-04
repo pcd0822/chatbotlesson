@@ -9,20 +9,68 @@ let driveClientCache = null;
 const docsCache = new Map();
 const CACHE_TTL_MS = 60 * 1000;
 
+function normalizePrivateKey(key) {
+  if (!key) return key;
+  let k = key.trim();
+  // 따옴표로 감싸진 채로 붙여넣어졌으면 제거
+  if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) {
+    k = k.slice(1, -1);
+  }
+  // \n 문자열을 실제 개행으로 변환 (한 줄 형태로 붙여넣었을 때)
+  k = k.replace(/\\n/g, "\n");
+  return k;
+}
+
 function getServiceAccountCredentials() {
+  // 방식 1 (권장): client_email + private_key 두 환경변수로 분리
+  const email = process.env.GOOGLE_CLIENT_EMAIL;
+  const key = process.env.GOOGLE_PRIVATE_KEY;
+  if (email && key) {
+    return {
+      client_email: email.trim(),
+      private_key: normalizePrivateKey(key),
+    };
+  }
+
+  // 방식 2: base64 인코딩한 JSON
+  const b64 = process.env.GOOGLE_SERVICE_ACCOUNT_BASE64;
+  if (b64) {
+    try {
+      const decoded = Buffer.from(b64.trim(), "base64").toString("utf8");
+      return JSON.parse(decoded);
+    } catch (e) {
+      throw new Error("GOOGLE_SERVICE_ACCOUNT_BASE64 값을 디코딩하지 못했습니다. base64로 변환된 값이 맞는지 확인하세요.");
+    }
+  }
+
+  // 방식 3 (폴백): 원본 JSON 통째로
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw) {
-    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON 환경변수가 설정되지 않았습니다.");
+  if (raw) {
+    let jsonString = raw.trim();
+    if (!jsonString.startsWith("{")) {
+      try {
+        jsonString = Buffer.from(jsonString, "base64").toString("utf8");
+      } catch (_) {
+        // 그냥 진행해서 아래에서 에러 발생시키도록
+      }
+    }
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (parsed.private_key) {
+        parsed.private_key = normalizePrivateKey(parsed.private_key);
+      }
+      return parsed;
+    } catch (e) {
+      throw new Error(
+        "GOOGLE_SERVICE_ACCOUNT_JSON 값을 JSON으로 읽을 수 없습니다. " +
+        "더 쉬운 방법으로, GOOGLE_CLIENT_EMAIL과 GOOGLE_PRIVATE_KEY를 따로 등록해보세요. (README 참고)"
+      );
+    }
   }
-  let jsonString = raw.trim();
-  if (!jsonString.startsWith("{")) {
-    jsonString = Buffer.from(jsonString, "base64").toString("utf8");
-  }
-  try {
-    return JSON.parse(jsonString);
-  } catch (e) {
-    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON 값을 JSON으로 읽을 수 없습니다. 큰따옴표/줄바꿈을 확인하세요.");
-  }
+
+  throw new Error(
+    "구글 서비스 계정 환경변수가 없습니다. Netlify에 GOOGLE_CLIENT_EMAIL과 GOOGLE_PRIVATE_KEY를 등록해주세요. (README 5단계 참고)"
+  );
 }
 
 function getDriveClient() {

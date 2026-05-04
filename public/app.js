@@ -26,7 +26,51 @@
     folderId: localStorage.getItem(STORAGE_KEYS.folderId) || "",
     history: [],
     sending: false,
+    syncedFromServer: false,
   };
+
+  // ---------- 서버 동기화 (Netlify Blobs) ----------
+  async function fetchRemoteSettings() {
+    try {
+      const res = await fetch("/api/settings", { method: "GET" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function pushRemoteSettings() {
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instructions: state.instructions,
+          folderId: state.folderId,
+        }),
+      });
+      return res.ok;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function applyRemoteToLocal(remote) {
+    if (!remote) return false;
+    let changed = false;
+    if (typeof remote.instructions === "string" && remote.instructions !== state.instructions) {
+      state.instructions = remote.instructions;
+      localStorage.setItem(STORAGE_KEYS.instructions, state.instructions);
+      changed = true;
+    }
+    if (typeof remote.folderId === "string" && remote.folderId !== state.folderId) {
+      state.folderId = remote.folderId;
+      localStorage.setItem(STORAGE_KEYS.folderId, state.folderId);
+      changed = true;
+    }
+    return changed;
+  }
 
   // ---------- 유틸 ----------
   function showToast(message) {
@@ -93,20 +137,29 @@
     }
   });
 
-  els.saveInstructions.addEventListener("click", () => {
+  async function saveAndSync(successMsg) {
+    const ok = await pushRemoteSettings();
+    if (ok) {
+      showToast(`${successMsg} (모든 디바이스에 동기화) ☁️`);
+    } else {
+      showToast(`${successMsg} (이 디바이스에만 저장됨 ⚠️)`);
+    }
+  }
+
+  els.saveInstructions.addEventListener("click", async () => {
     state.instructions = els.instructionsInput.value.trim();
     localStorage.setItem(STORAGE_KEYS.instructions, state.instructions);
     closeModal(els.modalInstructions);
-    showToast("응답 지침이 저장되었어요 ✨");
+    await saveAndSync("응답 지침이 저장되었어요 ✨");
   });
 
-  els.saveFolder.addEventListener("click", () => {
+  els.saveFolder.addEventListener("click", async () => {
     const raw = els.folderInput.value.trim();
     const folderId = extractFolderId(raw);
     state.folderId = folderId;
     localStorage.setItem(STORAGE_KEYS.folderId, state.folderId);
     closeModal(els.modalFolder);
-    showToast(folderId ? "폴더 ID가 저장되었어요 📁" : "폴더 ID가 비워졌어요");
+    await saveAndSync(folderId ? "폴더 ID가 저장되었어요 📁" : "폴더 ID가 비워졌어요");
   });
 
   function extractFolderId(input) {
@@ -244,13 +297,33 @@
     if (!state.instructions) missing.push("⚙️ 응답 지침");
     if (!state.folderId) missing.push("📁 폴더 ID");
     if (missing.length) {
-      addBubble(
+      return addBubble(
         "bot",
         `시작하기 전에 ${missing.join("과 ")}을 설정해주세요!`
       );
     }
+    return null;
   }
 
-  checkInitialSetup();
-  els.input.focus();
+  async function init() {
+    const setupBubble = checkInitialSetup();
+    els.input.focus();
+
+    // 백그라운드에서 서버 동기화
+    const remote = await fetchRemoteSettings();
+    if (remote) {
+      state.syncedFromServer = true;
+      const changed = applyRemoteToLocal(remote);
+      if (changed) {
+        if (setupBubble && state.instructions && state.folderId) {
+          // 안내 말풍선이 더는 필요 없음 → 교체
+          setupBubble.body.textContent = "다른 디바이스에서 저장한 설정을 불러왔어요 ☁️ 바로 질문해보세요!";
+        } else {
+          addBubble("bot", "다른 디바이스에서 저장한 설정을 불러왔어요 ☁️");
+        }
+      }
+    }
+  }
+
+  init();
 })();
