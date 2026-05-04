@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>나만의 문서 챗봇 🐰</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐰%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="chat-header">
+        <div class="title">
+          <span class="mascot" aria-hidden="true">🐰</span>
+          <div>
+            <h1>나만의 문서 챗봇</h1>
+            <p class="subtitle">구글 드라이브 문서를 참고해서 답해드려요!</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="btn-instructions" class="icon-btn" type="button" title="응답 지침 설정">
+            <span aria-hidden="true">⚙️</span>
+            <span class="btn-label">지침 설정</span>
+          </button>
+          <button id="btn-folder" class="icon-btn" type="button" title="드라이브 폴더 ID 설정">
+            <span aria-hidden="true">📁</span>
+            <span class="btn-label">폴더 설정</span>
+          </button>
+        </div>
+      </header>
+
+      <main id="chat-window" class="chat-window" aria-live="polite">
+        <div class="bubble bot welcome">
+          <div class="avatar">🐰</div>
+          <div class="bubble-body">
+            <p>안녕하세요! 저는 여러분의 문서 챗봇이에요. ✨</p>
+            <p>오른쪽 위 <strong>⚙️ 지침 설정</strong>과 <strong>📁 폴더 설정</strong>을 먼저 채워주시면 더 잘 도와드릴 수 있어요!</p>
+          </div>
+        </div>
+      </main>
+
+      <form id="chat-form" class="chat-input">
+        <textarea
+          id="message-input"
+          rows="1"
+          placeholder="궁금한 내용을 입력해주세요... (Enter로 전송, Shift+Enter로 줄바꿈)"
+          autocomplete="off"
+        ></textarea>
+        <button id="send-btn" type="submit" title="보내기">
+          <span aria-hidden="true">💌</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- 지침 설정 모달 -->
+    <div id="modal-instructions" class="modal" hidden>
+      <div class="modal-card">
+        <header>
+          <h2>⚙️ 챗봇 응답 지침</h2>
+          <button class="close-btn" data-close="modal-instructions" type="button" aria-label="닫기">✕</button>
+        </header>
+        <p class="hint">
+          챗봇이 어떤 말투/역할로 답할지 자유롭게 적어주세요.<br />
+          예) "당신은 초등학생의 독서 토론 친구예요. 항상 따뜻하고 쉬운 말로 답해주세요."
+        </p>
+        <textarea id="instructions-input" rows="10" placeholder="예) 당신은 친절한 역사 선생님이에요..."></textarea>
+        <footer>
+          <button class="btn-secondary" data-close="modal-instructions" type="button">취소</button>
+          <button id="save-instructions" class="btn-primary" type="button">💾 저장</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- 폴더 ID 설정 모달 -->
+    <div id="modal-folder" class="modal" hidden>
+      <div class="modal-card">
+        <header>
+          <h2>📁 구글 드라이브 폴더 ID</h2>
+          <button class="close-btn" data-close="modal-folder" type="button" aria-label="닫기">✕</button>
+        </header>
+        <p class="hint">
+          챗봇이 참조할 문서가 들어있는 <strong>구글 드라이브 폴더의 ID</strong>를 입력하세요.<br />
+          폴더 URL이 <code>https://drive.google.com/drive/folders/<b>1AbCdEf...</b></code> 라면 굵게 표시된 부분이 ID입니다.<br />
+          ⚠️ 해당 폴더는 <strong>서비스 계정 이메일</strong>에 <strong>편집자(또는 뷰어)</strong> 권한으로 공유되어 있어야 해요.
+        </p>
+        <input id="folder-input" type="text" placeholder="예) 1AbCdEfGhIjKlMnOpQrStUvWxYz" />
+        <footer>
+          <button class="btn-secondary" data-close="modal-folder" type="button">취소</button>
+          <button id="save-folder" class="btn-primary" type="button">💾 저장</button>
+        </footer>
+      </div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
